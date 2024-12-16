@@ -1,7 +1,3 @@
-Here’s the **README.md** rewritten entirely in English with professional formatting:
-
----
-
 # **VyKaNFLIX - Netflix Account Checker Tools**
 
 ---
